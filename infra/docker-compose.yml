@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: ../gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - validator-net
+    depends_on:
+      - service-cpf
+      - service-cnpj
+      - service-cep
+      - service-email
+
+  service-cpf:
+    build:
+      context: ../service-cpf
+    networks:
+      - validator-net
+
+  service-cnpj:
+    build:
+      context: ../service-cnpj
+    networks:
+      - validator-net
+
+  service-cep:
+    build:
+      context: ../service-cep
+    networks:
+      - validator-net
+
+  service-email:
+    build:
+      context: ../service-email
+    networks:
+      - validator-net
+
+networks:
+  validator-net:
+    driver: bridge
