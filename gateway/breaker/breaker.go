@@ -1,10 +1,11 @@
 package breaker
 
 import (
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"validator-hub/gateway/logger"
 )
 
 type State int
@@ -102,7 +103,7 @@ func (cb *CircuitBreaker) setState(newState State, now time.Time) {
 	if newState == StateOpen { newStr = "aberto" }
 	if newState == StateHalfOpen { newStr = "semi-aberto" }
 
-	log.Printf(`{"mensagem": "circuit breaker alterado", "servico": "%s", "de": "%s", "para": "%s"}`, cb.name, oldStr, newStr)
+	logger.StateChange("circuit breaker alterado ("+cb.name+")", oldStr, newStr)
 }
 
 type BreakerTransport struct {

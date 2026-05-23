@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,15 +10,17 @@ import (
 	"syscall"
 	"time"
 
+	"validator-hub/gateway/logger"
 	"validator-hub/gateway/router"
 )
 
 func main() {
-	log.SetFlags(0)
+	logger.Init("gateway")
 
 	apiKey := os.Getenv("API_KEY")
 	if apiKey == "" {
-		log.Fatal(`{"erro": "variável de ambiente API_KEY não configurada"}`)
+		logger.Error("variável de ambiente API_KEY não configurada", "main.go", 21, nil)
+		os.Exit(1)
 	}
 
 	mux := router.New(apiKey)
@@ -30,9 +31,9 @@ func main() {
 	}
 
 	go func() {
-		log.Println(`{"mensagem": "iniciando gateway na porta 8080"}`)
+		logger.Info("iniciando gateway na porta 8080")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf(`{"erro": "falha ao iniciar gateway", "detalhe": "%v"}`, err)
+			logger.Error("falha ao iniciar gateway", "main.go", 35, err)
 		}
 	}()
 
@@ -41,7 +42,7 @@ func main() {
 
 	<-ctx.Done()
 
-	log.Println(`{"mensagem": "encerrando serviço, aguardando requisições em andamento..."}`)
+	logger.StateChange("encerrando serviço, aguardando requisições em andamento...", "rodando", "encerrando")
 
 	timeoutStr := os.Getenv("SHUTDOWN_TIMEOUT_SECONDS")
 	timeoutSec := 15
@@ -53,10 +54,10 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctxShutdown); err != nil {
-		log.Println(`{"erro": "timeout de encerramento atingido, forçando saída"}`)
+		logger.StateChange("timeout de encerramento atingido, forçando saída", "encerrando", "forçado")
 		os.Exit(1)
 	}
 
-	log.Println(`{"mensagem": "serviço encerrado com sucesso"}`)
+	logger.StateChange("serviço encerrado com sucesso", "encerrando", "encerrado")
 	os.Exit(0)
 }

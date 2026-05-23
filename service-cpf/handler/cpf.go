@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"validator-hub/service-cpf/metrics"
 	"validator-hub/service-cpf/validator"
 )
 
@@ -42,10 +43,14 @@ func ValidateBody(w http.ResponseWriter, r *http.Request) {
 }
 
 func processValidation(w http.ResponseWriter, cpf string) {
+	start := time.Now()
+	
 	if cpf == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"valido": false, "formatado": "", "mensagem": "cpf não informado"}`))
+		
+		metrics.Record(false, true, uint64(time.Since(start).Milliseconds()))
 		return
 	}
 
@@ -60,6 +65,8 @@ func processValidation(w http.ResponseWriter, cpf string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resp)
+	
+	metrics.Record(valid, false, uint64(time.Since(start).Milliseconds()))
 }
 
 type HealthResponse struct {
@@ -86,7 +93,7 @@ func Health(w http.ResponseWriter, r *http.Request) {
 func Root(w http.ResponseWriter, r *http.Request) {
 	docs := map[string]string{
 		"nome":      "service-cpf",
-		"endpoints": "GET /validate?cpf={cpf}, GET /cpf/{cpf}, POST /validate, GET /health",
+		"endpoints": "GET /validate?cpf={cpf}, GET /cpf/{cpf}, POST /validate, GET /health, GET /metricas",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

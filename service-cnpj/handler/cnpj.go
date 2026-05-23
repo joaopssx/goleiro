@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"validator-hub/service-cnpj/metrics"
 	"validator-hub/service-cnpj/validator"
 )
 
@@ -42,10 +43,14 @@ func ValidateBody(w http.ResponseWriter, r *http.Request) {
 }
 
 func processValidation(w http.ResponseWriter, cnpj string) {
+	start := time.Now()
+	
 	if cnpj == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"valido": false, "formatado": "", "mensagem": "cnpj não informado"}`))
+		
+		metrics.Record(false, true, uint64(time.Since(start).Milliseconds()))
 		return
 	}
 
@@ -60,6 +65,8 @@ func processValidation(w http.ResponseWriter, cnpj string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resp)
+	
+	metrics.Record(valid, false, uint64(time.Since(start).Milliseconds()))
 }
 
 type HealthResponse struct {
@@ -86,7 +93,7 @@ func Health(w http.ResponseWriter, r *http.Request) {
 func Root(w http.ResponseWriter, r *http.Request) {
 	docs := map[string]string{
 		"nome":      "service-cnpj",
-		"endpoints": "GET /validate?cnpj={cnpj}, GET /cnpj/{cnpj}, POST /validate, GET /health",
+		"endpoints": "GET /validate?cnpj={cnpj}, GET /cnpj/{cnpj}, POST /validate, GET /health, GET /metricas",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

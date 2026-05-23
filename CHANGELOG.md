@@ -1,5 +1,16 @@
 # changelog
 
+## [0.7.0] - 2026-05-23
+
+### adicionado
+- framework proprietário de logs estruturados em json (`encoding/json`) substituindo `log` nativo em todos os componentes
+- campos unificados de observabilidade (`duracao_ms`, `arquivo`, `estado_anterior`) com controle por severidade (`LOG_LEVEL`)
+- middleware nativo interceptador no gateway e serviços injetando request tracing nos logs
+- mecanismo de métricas em memória baseado em `sync/atomic` imune a data race (tempo_medio, hits, erros)
+- endpoint `GET /metricas` implementado em cada serviço unitariamente
+- endpoint `GET /metricas` consolidado no gateway (aggregating endpoints filhos com concorrência)
+- elaborada a documentação `docs/observabilidade.md` com as instruções completas das payloads de telemetria
+
 ## [0.6.0] - 2026-05-23
 
 ### adicionado

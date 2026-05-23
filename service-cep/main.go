@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,13 +11,38 @@ import (
 	"time"
 
 	"validator-hub/service-cep/handler"
+	"validator-hub/service-cep/logger"
+	"validator-hub/service-cep/metrics"
 )
 
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := &responseWriter{w, http.StatusOK}
+		next.ServeHTTP(rw, r)
+		duracao := time.Since(start).Milliseconds()
+		logger.Request("requisição processada", r.Method, r.URL.Path, r.RemoteAddr, rw.status, duracao)
+	})
+}
+
 func main() {
+	logger.Init("service-cep")
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /{$}", handler.Root)
 	mux.HandleFunc("GET /health", handler.Health)
+	mux.HandleFunc("GET /metricas", metrics.Handler)
 	
 	mux.HandleFunc("GET /validate", handler.ValidateQuery)
 	mux.HandleFunc("POST /validate", handler.ValidateBody)
@@ -26,13 +50,13 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":8083",
-		Handler: mux,
+		Handler: loggingMiddleware(mux),
 	}
 
 	go func() {
-		log.Println("iniciando service-cep na porta 8083")
+		logger.Info("iniciando service-cep na porta 8083")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("erro ao iniciar servidor: %v", err)
+			logger.Error("erro ao iniciar servidor", "main.go", 59, err)
 		}
 	}()
 
@@ -41,7 +65,7 @@ func main() {
 
 	<-ctx.Done()
 
-	log.Println("encerrando serviço, aguardando requisições em andamento...")
+	logger.StateChange("encerrando serviço, aguardando requisições em andamento...", "rodando", "encerrando")
 
 	timeoutStr := os.Getenv("SHUTDOWN_TIMEOUT_SECONDS")
 	timeoutSec := 15
@@ -53,10 +77,10 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctxShutdown); err != nil {
-		log.Println("timeout de encerramento atingido, forçando saída")
+		logger.StateChange("timeout de encerramento atingido, forçando saída", "encerrando", "forçado")
 		os.Exit(1)
 	}
 
-	log.Println("serviço encerrado com sucesso")
+	logger.StateChange("serviço encerrado com sucesso", "encerrando", "encerrado")
 	os.Exit(0)
 }
