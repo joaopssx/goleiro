@@ -3,9 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"validator-hub/service-cnpj/validator"
 )
+
+var startTime = time.Now()
 
 type ValidationResponse struct {
 	Valido    bool   `json:"valido"`
@@ -59,10 +62,25 @@ func processValidation(w http.ResponseWriter, cnpj string) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+type HealthResponse struct {
+	Nome      string `json:"nome"`
+	Status    string `json:"status"`
+	Versao    string `json:"versao"`
+	Uptime    int64  `json:"uptime"`
+	Timestamp string `json:"timestamp"`
+}
+
 func Health(w http.ResponseWriter, r *http.Request) {
+	resp := HealthResponse{
+		Nome:      "service-cnpj",
+		Status:    "ok",
+		Versao:    "1.0.0",
+		Uptime:    int64(time.Since(startTime).Seconds()),
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "ok"}`))
+	json.NewEncoder(w).Encode(resp)
 }
 
 func Root(w http.ResponseWriter, r *http.Request) {

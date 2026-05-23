@@ -30,21 +30,28 @@ curl -H "X-API-Key: sua-chave-aqui" http://localhost:8080/cpf/validate?cpf=123.4
 
 ### health check consolidado
 - `GET /health` (não exige autenticação)
+- `GET /health/detalhado` (com versão e uptime)
+
+o gateway valida em paralelo com um timeout de 2 segundos.
+- retorna 200 ok se todos estiverem bem
+- retorna 207 multi-status se algum estiver degradado
+- retorna 503 service unavailable se algum estiver inacessível
 
 **exemplo de resposta:**
 ```json
 {
   "status": "ok",
-  "servicos": [
-    {
-      "nome": "service-cpf",
-      "status": "ok"
+  "servicos": {
+    "cpf": {
+      "status": "ok",
+      "latencia_ms": 12
     },
-    {
-      "nome": "service-cnpj",
-      "status": "ok"
+    "cnpj": {
+      "status": "ok",
+      "latencia_ms": 8
     }
-  ]
+  },
+  "verificado_em": "2026-05-23T14:00:00Z"
 }
 ```
 

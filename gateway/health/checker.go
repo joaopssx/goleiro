@@ -7,74 +7,150 @@ import (
 	"time"
 )
 
-type serviceStatus struct {
-	Nome   string `json:"nome"`
-	Status string `json:"status"`
+type ServiceDetails struct {
+	Status     string `json:"status"`
+	LatenciaMs int64  `json:"latencia_ms"`
 }
 
-type healthResponse struct {
-	Status   string          `json:"status"`
-	Servicos []serviceStatus `json:"servicos"`
+type HealthResponse struct {
+	Status       string                    `json:"status"`
+	Servicos     map[string]ServiceDetails `json:"servicos"`
+	VerificadoEm string                    `json:"verificado_em"`
 }
 
-var services = []string{
-	"http://service-cpf:8081/health",
-	"http://service-cnpj:8082/health",
-	"http://service-cep:8083/health",
-	"http://service-email:8084/health",
+type ServiceResponse struct {
+	Nome      string `json:"nome"`
+	Status    string `json:"status"`
+	Versao    string `json:"versao"`
+	Uptime    int64  `json:"uptime"`
+	Timestamp string `json:"timestamp"`
 }
 
-func Check(w http.ResponseWriter, r *http.Request) {
+type DetailedServiceDetails struct {
+	Status     string `json:"status"`
+	LatenciaMs int64  `json:"latencia_ms"`
+	Versao     string `json:"versao,omitempty"`
+	Uptime     int64  `json:"uptime,omitempty"`
+}
+
+type DetailedHealthResponse struct {
+	Status       string                            `json:"status"`
+	Servicos     map[string]DetailedServiceDetails `json:"servicos"`
+	VerificadoEm string                            `json:"verificado_em"`
+}
+
+var services = map[string]string{
+	"cpf":   "http://service-cpf:8081/health",
+	"cnpj":  "http://service-cnpj:8082/health",
+	"cep":   "http://service-cep:8083/health",
+	"email": "http://service-email:8084/health",
+}
+
+func getHealth(detailed bool) (int, any) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	results := []serviceStatus{}
+
+	basicServicos := make(map[string]ServiceDetails)
+	detailedServicos := make(map[string]DetailedServiceDetails)
 
 	client := http.Client{Timeout: 2 * time.Second}
 
-	for _, url := range services {
+	for key, url := range services {
 		wg.Add(1)
-		go func(target string) {
+		go func(k, u string) {
 			defer wg.Done()
-			
-			nome := "desconhecido"
-			switch target {
-			case "http://service-cpf:8081/health": nome = "service-cpf"
-			case "http://service-cnpj:8082/health": nome = "service-cnpj"
-			case "http://service-cep:8083/health": nome = "service-cep"
-			case "http://service-email:8084/health": nome = "service-email"
-			}
 
-			status := "indisponível"
-			resp, err := client.Get(target)
+			start := time.Now()
+			resp, err := client.Get(u)
+			latencia := time.Since(start).Milliseconds()
+
+			status := "inacessível"
+			versao := ""
+			var uptime int64 = 0
+
 			if err == nil {
+				defer resp.Body.Close()
 				if resp.StatusCode == http.StatusOK {
 					status = "ok"
+				} else if resp.StatusCode == http.StatusServiceUnavailable {
+					status = "degradado"
+				} else {
+					status = "degradado"
 				}
-				resp.Body.Close()
+
+				var svcResp ServiceResponse
+				if json.NewDecoder(resp.Body).Decode(&svcResp) == nil {
+					versao = svcResp.Versao
+					uptime = svcResp.Uptime
+				}
 			}
 
 			mu.Lock()
-			results = append(results, serviceStatus{Nome: nome, Status: status})
+			if detailed {
+				detailedServicos[k] = DetailedServiceDetails{
+					Status:     status,
+					LatenciaMs: latencia,
+					Versao:     versao,
+					Uptime:     uptime,
+				}
+			} else {
+				basicServicos[k] = ServiceDetails{
+					Status:     status,
+					LatenciaMs: latencia,
+				}
+			}
 			mu.Unlock()
-		}(url)
+		}(key, url)
 	}
 
 	wg.Wait()
 
-	overall := "ok"
-	for _, res := range results {
-		if res.Status != "ok" {
-			overall = "parcial"
-			break
+	overallStatus := "ok"
+	statusCode := http.StatusOK
+
+	if detailed {
+		for _, s := range detailedServicos {
+			if s.Status == "inacessível" {
+				overallStatus = "inacessível"
+				statusCode = http.StatusServiceUnavailable
+			} else if s.Status == "degradado" && overallStatus != "inacessível" {
+				overallStatus = "degradado"
+				statusCode = 207
+			}
+		}
+		return statusCode, DetailedHealthResponse{
+			Status:       overallStatus,
+			Servicos:     detailedServicos,
+			VerificadoEm: time.Now().UTC().Format(time.RFC3339),
+		}
+	} else {
+		for _, s := range basicServicos {
+			if s.Status == "inacessível" {
+				overallStatus = "inacessível"
+				statusCode = http.StatusServiceUnavailable
+			} else if s.Status == "degradado" && overallStatus != "inacessível" {
+				overallStatus = "degradado"
+				statusCode = 207
+			}
+		}
+		return statusCode, HealthResponse{
+			Status:       overallStatus,
+			Servicos:     basicServicos,
+			VerificadoEm: time.Now().UTC().Format(time.RFC3339),
 		}
 	}
+}
 
-	resp := healthResponse{
-		Status:   overall,
-		Servicos: results,
-	}
-
+func Check(w http.ResponseWriter, r *http.Request) {
+	code, payload := getHealth(false)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(payload)
+}
+
+func CheckDetailed(w http.ResponseWriter, r *http.Request) {
+	code, payload := getHealth(true)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(payload)
 }

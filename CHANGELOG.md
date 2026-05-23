@@ -2,6 +2,14 @@
 
 todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 
+## [0.4.0] - 2026-05-23
+
+### adicionado
+- health check profundo com cálculo de uptime e versão em cada serviço
+- verificação paralela consolidada no gateway com timeouts (status 200, 207 ou 503)
+- endpoint estendido `GET /health/detalhado` expondo dados métricos
+- auto-restart no docker-compose (`unless-stopped`) e comandos nativos de healthcheck
+
 ## [0.3.0] - 2026-05-23
 
 ### adicionado

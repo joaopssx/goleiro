@@ -13,6 +13,7 @@ func New(apiKey string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", health.Check)
+	mux.HandleFunc("GET /health/detalhado", health.CheckDetailed)
 
 	proxyCpf := createProxy("http://service-cpf:8081")
 	proxyCnpj := createProxy("http://service-cnpj:8082")
