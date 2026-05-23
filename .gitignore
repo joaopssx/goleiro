@@ -1,0 +1,40 @@
+# binários compilados
+gateway/gateway
+gateway/gateway.exe
+service-cpf/service-cpf
+service-cpf/service-cpf.exe
+service-cnpj/service-cnpj
+service-cnpj/service-cnpj.exe
+service-cep/service-cep
+service-cep/service-cep.exe
+service-email/service-email
+service-email/service-email.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# arquivos de ambiente e segredos
+.env
+.env.*
+*.local
+secrets/
+
+# diretórios de ides e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# logs
+*.log
+
+# mac os
+.DS_Store
+
+# go workspace / vendor
+vendor/
+go.work
+go.work.sum

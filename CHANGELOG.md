@@ -2,6 +2,15 @@
 
 todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 
+## [0.3.0] - 2026-05-23
+
+### adicionado
+- implementação completa do `gateway` com autenticação via `X-API-Key`
+- rate limiting nativo por ip usando sliding window (60 req/min)
+- roteamento dinâmico via proxy reverso preservando headers e adicionando `X-Forwarded-For`
+- log estruturado json para todas as requisições
+- endpoint consolidador de `/health` monitorando todos os microsserviços
+
 ## [0.2.0] - 2026-05-23
 
 ### adicionado
