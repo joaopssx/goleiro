@@ -1,12 +1,13 @@
 # changelog
 
-## [0.5.0] - 2026-05-23
+## [0.6.0] - 2026-05-23
 
 ### adicionado
-- suporte completo a graceful shutdown nos 5 serviços utilizando `signal.NotifyContext`
-- fechamento brando com sinal do os (sigterm/sigint) e timeout via `SHUTDOWN_TIMEOUT_SECONDS`
-- logs estritos de parada: "encerrando serviço...", e timeout
-- suporte a rolling update (zero downtime) via `update_config: start-first`
-- documentação `docs/operacoes.md` detalhando gerenciamento dos containers
-
-## [0.4.0] - 2026-05-23
+- rate limit customizado via algoritmo token bucket (utilizando `sync.map`) no gateway
+- isenção automática de tráfego para ips internos (localhost e redes de infraestrutura) no middleware de limit
+- bloqueio elegante de requests retornando `429` com os parâmetros `tente_novamente_em` e o cabeçalho `retry-after`
+- integração de circuit breaker por serviço no gateway (fechado, aberto, semi-aberto) 100% stdlib
+- acoplamento do estado dos disjuntores ao reverse proxy através de transição de `http.RoundTripper` (`ErrorHandler` injetando 503 customizado)
+- logging estruturado para a máquina de estado ("de: fechado", "para: aberto")
+- testes unitários puros para transições do breaker e vazamento de tokens do rate limiter
+- documentação arquitetônica da nova camada no `docs/resiliencia.md`
